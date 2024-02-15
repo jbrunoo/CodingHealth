@@ -2,4 +2,11 @@
     <string name="app_name">CodingHealth</string>
     <string name="title_activity_second">SecondActivity</string>
     <string name="title_activity_third">ThirdActivity</string>
+    <string name="main">main</string>
+    <string name="main_screen">메인 화면</string>
+    <string name="home">홈</string>
+    <string name="left">왼쪽</string>
+    <string name="right">오른쪽</string>
+    <string name="second_screen">2번째 화면</string>
+    <string name="third_screen">3번째 화면</string>
 </resources>
