@@ -4,3 +4,4 @@
 
 > 2 : 로또 번호 생성기
 
+> 3 : 화면 전환 with compose navigation(SAA)
