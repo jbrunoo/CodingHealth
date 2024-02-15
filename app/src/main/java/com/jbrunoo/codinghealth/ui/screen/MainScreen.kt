@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.jbrunoo.codinghealth.navigation.BottomNavItem
@@ -57,8 +58,12 @@ private fun RowScope.BottomNavigation(
             selected = currentRoute == item.route,
             onClick = {
                 navController.navigate(item.route) {
-                    popUpTo(navController.graph.startDestinationId)
+                    // 공식문서는 navController.graph.findStartDestination().id
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
                     launchSingleTop = true
+                    restoreState = true
                 }
             },
             icon = {
