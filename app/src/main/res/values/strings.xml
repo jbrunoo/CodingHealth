@@ -9,4 +9,7 @@
     <string name="right">오른쪽</string>
     <string name="second_screen">2번째 화면</string>
     <string name="third_screen">3번째 화면</string>
+    <string name="weimaraner">weimaraner</string>
+    <string name="golden_retriever">Golden Retriever</string>
+    <string name="bulldog">bulldog</string>
 </resources>
