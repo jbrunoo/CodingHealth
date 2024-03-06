@@ -64,7 +64,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TodoScreen(todoViewModel: TodoViewModel = viewModel()) {
     var openAlertDialog by remember { mutableStateOf(false) }
-    var currentTodoItemUiState by remember { mutableStateOf<TodoItemUiState?>(null) }
+    var currentTodoItem by remember { mutableStateOf<TodoItem?>(null) }
+
+    fun clearDialogState() {
+        currentTodoItem = null
+        openAlertDialog = false
+    }
 
     Scaffold(
         topBar = {
@@ -85,23 +90,24 @@ fun TodoScreen(todoViewModel: TodoViewModel = viewModel()) {
             onDeleteTodoItem = { todoItemUiState ->
                 todoViewModel.removeTodoItem(todoItemUiState)
             },
-            onUpdateTodoItem = { todoItemUiState, body ->
-                currentTodoItemUiState = todoItemUiState
+            onUpdateTodoItem = { todoItemUiState ->
+                currentTodoItem = todoItemUiState
                 openAlertDialog = true
             }
         )
         if (openAlertDialog) {
             TodoItemDialog(
-                currentTodoItemUiState = currentTodoItemUiState,
-                onDismissRequest = { openAlertDialog = false },
+                currentTodoItem = currentTodoItem,
+                onDismissRequest = {
+                    clearDialogState()
+                },
                 onConfirmation = { todoItemUiState ->
-                    if (currentTodoItemUiState?.id == todoItemUiState.id) {
-                        todoViewModel.undateTodoItem(currentTodoItemUiState!!, todoItemUiState.body)
+                    if (currentTodoItem != null) {
+                        todoViewModel.undateTodoItem(todoItemUiState, todoItemUiState.body)
                     } else {
                         todoViewModel.addTodoItem(todoItemUiState)
                     }
-                    currentTodoItemUiState = null
-                    openAlertDialog = false
+                    clearDialogState()
                 }
             )
         }
@@ -111,10 +117,10 @@ fun TodoScreen(todoViewModel: TodoViewModel = viewModel()) {
 @Composable
 private fun Content(
     paddingValues: PaddingValues,
-    todoList: List<TodoItemUiState>,
-    onCheckedChange: (TodoItemUiState, Boolean) -> Unit,
-    onDeleteTodoItem: (TodoItemUiState) -> Unit,
-    onUpdateTodoItem: (TodoItemUiState, String) -> Unit
+    todoList: List<TodoItem>,
+    onCheckedChange: (TodoItem, Boolean) -> Unit,
+    onDeleteTodoItem: (TodoItem) -> Unit,
+    onUpdateTodoItem: (TodoItem) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.padding(paddingValues),
@@ -125,34 +131,32 @@ private fun Content(
             items = todoList,
             key = { todoItem -> todoItem.id }
         ) { todoItem ->
-            TodoItem(
+            TodoItemCard(
                 body = todoItem.body,
                 checked = todoItem.checked,
                 onCheckedChange = { checked ->
                     onCheckedChange(todoItem, checked)
                 },
                 onDeleteTodoItem = { onDeleteTodoItem(todoItem) },
-                onUpdateTodoItem = { body ->
-                    onUpdateTodoItem(todoItem, body)
-                }
+                onUpdateTodoItem = { onUpdateTodoItem(todoItem) }
             )
         }
     }
 }
 
 @Composable
-fun TodoItem(
+fun TodoItemCard(
     body: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onDeleteTodoItem: () -> Unit,
-    onUpdateTodoItem: (String) -> Unit
+    onUpdateTodoItem: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onUpdateTodoItem(body) }
+            .clickable { onUpdateTodoItem() }
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
@@ -175,11 +179,11 @@ fun TodoItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoItemDialog(
-    currentTodoItemUiState: TodoItemUiState? = null,
+    currentTodoItem: TodoItem? = null,
     onDismissRequest: () -> Unit,
-    onConfirmation: (TodoItemUiState) -> Unit,
+    onConfirmation: (TodoItem) -> Unit,
 ) {
-    var body by remember { mutableStateOf(currentTodoItemUiState?.body ?: "") }
+    var body by remember { mutableStateOf(currentTodoItem?.body ?: "") }
     var isError by remember { mutableStateOf(false) }
 
     fun validate(body: String) {
@@ -191,10 +195,16 @@ fun TodoItemDialog(
         confirmButton = {
             TextButton(onClick = {
                 if (body.isNotEmpty()) {
-                    if (currentTodoItemUiState != null) {
-                        onConfirmation(TodoItemUiState(id = currentTodoItemUiState.id, initialBody = body, initialChecked = currentTodoItemUiState.checked))
+                    if (currentTodoItem != null) {
+                        onConfirmation(
+                            TodoItem(
+                                id = currentTodoItem.id,
+                                initialBody = body,
+                                initialChecked = currentTodoItem.checked
+                            )
+                        )
                     } else {
-                        onConfirmation(TodoItemUiState(initialBody = body))
+                        onConfirmation(TodoItem(initialBody = body))
                     }
                 } else isError = true
             }) {
@@ -211,7 +221,7 @@ fun TodoItemDialog(
             Column {
                 OutlinedTextField(
                     value = body, onValueChange = { body = it },
-                    label = { Text(text = "body") },
+                    label = { Text(text = "to-do") },
                     singleLine = true,
                     isError = isError,
                     supportingText = {
