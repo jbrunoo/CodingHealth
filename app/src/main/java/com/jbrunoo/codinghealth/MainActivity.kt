@@ -217,6 +217,7 @@ fun TodoItemDialog(
             }
         },
         title = { Text(text = "todo-list") },
+
         text = {
             Column {
                 OutlinedTextField(
