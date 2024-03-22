@@ -11,17 +11,17 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TodoDao {
     @Query("SELECT * FROM todo")
-    fun getTodos(): Flow<List<TodoItem>>
+    fun getAll(): Flow<List<TodoItem>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertTodo(todo: TodoItem)
+    suspend fun insert(todo: TodoItem)
 
     @Update(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun updateTodo(todo: TodoItem)
+    suspend fun update(todo: TodoItem)
 
     @Delete
-    suspend fun deleteTodo(user: TodoItem)
+    suspend fun delete(user: TodoItem)
 
     @Query("DELETE FROM todo")
-    suspend fun deleteTodos()
+    suspend fun deleteAll()
 }
