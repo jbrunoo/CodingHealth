@@ -1,31 +1,42 @@
 package com.jbrunoo.codinghealth.vm
 
-import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
-import com.jbrunoo.codinghealth.model.TodoItem
+import androidx.lifecycle.viewModelScope
+import com.jbrunoo.codinghealth.local.TodoDao
+import com.jbrunoo.codinghealth.local.TodoItem
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 
-class TodoViewModel: ViewModel() {
-    var todoItemList = mutableStateListOf<TodoItem>()
-        private set
+// db는 context가 필요하므로 viewmodel에서 초기화 하지 않고 dao를 받아서 처리.
+class TodoViewModel(private val todoDao: TodoDao) : ViewModel() {
+    private var _todoItems = MutableStateFlow<List<TodoItem>>(emptyList())
+    val todoItems = _todoItems.asStateFlow()
 
-    fun addTodoItem(item: TodoItem) {
-        todoItemList.add(item)
-    }
-
-    fun removeTodoItem(item: TodoItem) {
-        todoItemList.remove(item)
-    }
-
-    fun undateTodoItem(item: TodoItem, newBody: String) {
-        todoItemList.find { it.id == item.id }?.let {
-            it.body = newBody
+    init {
+        viewModelScope.launch {
+            todoDao.getAll().collect { todos ->
+                _todoItems.value = todos
+            }
         }
     }
 
-    fun checkItem(item: TodoItem, checked: Boolean) =
-        todoItemList.find { it.id == item.id }?.let {
-//            it.checked.value = checked
-            it.checked = checked
+    fun addTodo(todo: TodoItem) {
+        viewModelScope.launch {
+            todoDao.insert(todo)
+        }
+    }
+
+    fun updateTodo(todo: TodoItem) {
+        viewModelScope.launch {
+            todoDao.update(todo)
+        }
+    }
+
+    fun deleteCheckedItems() {
+        viewModelScope.launch {
+            todoDao.deleteTodos()
+        }
     }
 }

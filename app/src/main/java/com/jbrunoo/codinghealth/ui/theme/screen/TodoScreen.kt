@@ -1,18 +1,23 @@
 package com.jbrunoo.codinghealth.ui.theme.screen
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -29,27 +34,34 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.jbrunoo.codinghealth.model.TodoItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.jbrunoo.codinghealth.local.TodoItem
 import com.jbrunoo.codinghealth.vm.TodoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoScreen(todoViewModel: TodoViewModel = viewModel()) {
-    var openAlertDialog by remember { mutableStateOf(false) }
-    var currentTodoItem by remember { mutableStateOf<TodoItem?>(null) }
+fun TodoScreen(todoViewModel: TodoViewModel) {
+    val todoItems = todoViewModel.todoItems.collectAsStateWithLifecycle()
+    var currentTodoItemId by remember { mutableLongStateOf(-1) }
+    var currentTodoItemBody by remember { mutableStateOf("") }
 
-    fun clearDialogState() {
-        currentTodoItem = null
-        openAlertDialog = false
+    var openTodoDialog by remember { mutableStateOf(false) }
+    var isLongClicked by remember { mutableStateOf(false) }
+
+    fun clearTodoDialogState() {
+        currentTodoItemId = -1
+        currentTodoItemBody = ""
+        openTodoDialog = false
     }
 
     Scaffold(
@@ -57,51 +69,73 @@ fun TodoScreen(todoViewModel: TodoViewModel = viewModel()) {
             CenterAlignedTopAppBar(title = { Text(text = "todo-list") })
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { openAlertDialog = true }) {
-                Icon(imageVector = Icons.Default.Add, contentDescription = "add")
+            if (!isLongClicked) {
+                FloatingActionButton(onClick = { openTodoDialog = true }) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = "add-icon")
+                }
+            } else {
+                Row {
+                    FloatingActionButton(onClick = {
+                        todoViewModel.deleteCheckedItems()
+                        isLongClicked = !isLongClicked
+                    }) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "delete-icon")
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    FloatingActionButton(onClick = {
+                        isLongClicked = !isLongClicked
+                    }) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "close-icon")
+                    }
+                }
             }
+
         }
     ) { paddingValues ->
         Content(
             paddingValues = paddingValues,
-            todoItemList = todoViewModel.todoItemList,
-            onCheckedChange = { todoItem, checked ->
-                todoViewModel.checkItem(todoItem, checked = checked)
+            todoItemList = todoItems.value,
+            onCompleteChange = { todoItem, complete ->
+                todoViewModel.updateTodo(TodoItem(id = todoItem.id, body = todoItem.body, complete = complete))
             },
-            onDeleteTodoItem = { todoItem ->
-                todoViewModel.removeTodoItem(todoItem)
+            onDeleteChange = { todoItem, delete ->
+                todoViewModel.updateTodo(TodoItem(id = todoItem.id, body = todoItem.body, complete = todoItem.complete, delete = delete))
             },
-            onUpdateTodoItem = { todoItem ->
-                currentTodoItem = todoItem
-                openAlertDialog = true
-            }
+            onCheckCurrentTodoItem = { todoItem ->
+                // mutableStateOf<TodoItem?>(null)로 받으니 null check 문제 있어서 id와 body로 구현함..
+                currentTodoItemId = todoItem.id
+                currentTodoItemBody = todoItem.body
+                openTodoDialog = true
+            },
+            isLongClicked = isLongClicked,
+            onLongClick = { isLongClicked = !isLongClicked },
         )
-        if (openAlertDialog) {
+        if (openTodoDialog) {
             TodoItemDialog(
-                currentTodoItem = currentTodoItem,
+                value = currentTodoItemBody,
                 onDismissRequest = {
-                    clearDialogState()
+                    clearTodoDialogState()
                 },
-                onConfirmation = { todoItem ->
-                    if (currentTodoItem != null) {
-                        todoViewModel.undateTodoItem(todoItem, todoItem.body)
-                    } else {
-                        todoViewModel.addTodoItem(todoItem)
-                    }
-                    clearDialogState()
+                onConfirmation = { newBody ->
+                    if (currentTodoItemId == -1L) todoViewModel.addTodo(TodoItem(body = newBody))
+                    else todoViewModel.updateTodo(TodoItem(id = currentTodoItemId, body = newBody))
+                    clearTodoDialogState()
                 }
             )
         }
     }
 }
 
+
 @Composable
 private fun Content(
     paddingValues: PaddingValues,
     todoItemList: List<TodoItem>,
-    onCheckedChange: (TodoItem, Boolean) -> Unit,
-    onDeleteTodoItem: (TodoItem) -> Unit,
-    onUpdateTodoItem: (TodoItem) -> Unit
+    onCompleteChange: (TodoItem, Boolean) -> Unit,
+    onDeleteChange: (TodoItem, Boolean) -> Unit,
+    onCheckCurrentTodoItem: (TodoItem) -> Unit,
+    isLongClicked: Boolean,
+    onLongClick: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.padding(paddingValues),
@@ -109,51 +143,72 @@ private fun Content(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         items(
-            items = todoItemList,
-            key = { todoItem -> todoItem.id }
+            items = todoItemList
         ) { todoItem ->
             TodoItemCard(
-                body = todoItem.body,
-                checked = todoItem.checked,
-                onCheckedChange = { checked ->
-                    onCheckedChange(todoItem, checked)
+                todoItem = todoItem,
+                onCompleteChange = { complete ->
+                    onCompleteChange(todoItem, complete)
                 },
-                onDeleteTodoItem = { onDeleteTodoItem(todoItem) },
-                onUpdateTodoItem = { onUpdateTodoItem(todoItem) }
+                onDeleteChange = { delete ->
+                    onDeleteChange(todoItem, delete)
+                },
+                onCheckCurrentTodoItem = { onCheckCurrentTodoItem(todoItem) },
+                isLongClicked = isLongClicked,
+                onLongClick = onLongClick
             )
         }
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TodoItemCard(
-    body: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onDeleteTodoItem: () -> Unit,
-    onUpdateTodoItem: () -> Unit
+    todoItem: TodoItem,
+    onCompleteChange: (Boolean) -> Unit,
+    onCheckCurrentTodoItem: () -> Unit,
+    onDeleteChange: (Boolean) -> Unit,
+    isLongClicked: Boolean,
+    onLongClick: () -> Unit
+
 ) {
+    var isIconClicked by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onUpdateTodoItem() }
-    ) {
+            .combinedClickable(
+                onClick = onCheckCurrentTodoItem,
+                onLongClick = onLongClick
+            )
+    )
+    {
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = checked, onCheckedChange = { onCheckedChange(!checked) })
+            Checkbox(
+                checked = todoItem.complete,
+                onCheckedChange = { onCompleteChange(!todoItem.complete) })
             Text(
-                text = body,
+                text = todoItem.body,
                 modifier = Modifier.weight(0.8f),
-                textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None,
+                textDecoration = if (todoItem.complete) TextDecoration.LineThrough else TextDecoration.None,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 2
             )
-            IconButton(onClick = onDeleteTodoItem, modifier = Modifier.weight(0.2f)) {
-                Icon(imageVector = Icons.Default.Delete, contentDescription = "delete")
-            }
+            if (isLongClicked) IconButton(
+                onClick = {
+                    isIconClicked = !isIconClicked
+                    onDeleteChange(isIconClicked)
+                },
+                modifier = Modifier.weight(0.2f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check, contentDescription = "check-icon",
+                    tint = if (isIconClicked) Color.Red else Color.Black
+                )
+            } else isIconClicked = false
         }
     }
 }
@@ -161,35 +216,19 @@ private fun TodoItemCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TodoItemDialog(
-    currentTodoItem: TodoItem? = null,
+    value: String = "",
     onDismissRequest: () -> Unit,
-    onConfirmation: (TodoItem) -> Unit,
+    onConfirmation: (String) -> Unit,
 ) {
-    var body by remember { mutableStateOf(currentTodoItem?.body ?: "") }
+    var body by remember { mutableStateOf(value) }
     var isError by remember { mutableStateOf(false) }
-
-    fun validate(body: String) {
-        isError = body.isEmpty()
-    }
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(onClick = {
-                if (body.isNotEmpty()) {
-                    if (currentTodoItem != null) {
-                        onConfirmation(
-                            // data class가 아니라 copy x
-                            TodoItem(
-                                id = currentTodoItem.id,
-                                initialBody = body,
-                                initialChecked = currentTodoItem.checked
-                            )
-                        )
-                    } else {
-                        onConfirmation(TodoItem(initialBody = body))
-                    }
-                } else isError = true
+                if (body.isNotEmpty()) onConfirmation(body)
+                else isError = !isError
             }) {
                 Text(text = "저장")
             }
@@ -207,16 +246,21 @@ private fun TodoItemDialog(
                     label = { Text(text = "to-do") },
                     singleLine = true,
                     isError = isError,
-                    supportingText = {
-                        if (isError)
-                            Text(
-                                text = "text is empty",
-                                color = MaterialTheme.colorScheme.error
-                            )
+                    trailingIcon = {
+                        if (isError) Icon(
+                            imageVector = Icons.Default.Create,
+                            contentDescription = "create-icon"
+                        )
                     },
-                    keyboardActions = KeyboardActions { validate(body) }
+                    supportingText = {
+                        if (isError) Text(
+                            text = "text is empty",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 )
             }
         }
     )
 }
+
