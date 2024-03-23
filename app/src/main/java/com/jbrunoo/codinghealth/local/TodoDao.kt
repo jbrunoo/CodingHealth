@@ -23,8 +23,8 @@ interface TodoDao {
     @Update(onConflict = OnConflictStrategy.REPLACE)
     suspend fun update(todo: TodoItem)
 
-    @Delete
-    suspend fun delete(user: TodoItem)
+    @Query("DELETE FROM todo WHERE `delete` = 1")
+    suspend fun deleteTodos()
 
     @Query("DELETE FROM todo")
     suspend fun deleteAll()
