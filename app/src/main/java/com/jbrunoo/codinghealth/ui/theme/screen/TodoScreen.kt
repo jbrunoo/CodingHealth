@@ -95,11 +95,11 @@ fun TodoScreen(todoViewModel: TodoViewModel) {
         Content(
             paddingValues = paddingValues,
             todoItemList = todoItems.value,
-            onCompleteChange = { id, complete ->
-                todoViewModel.updateTodo(TodoItem(id = id, complete = complete))
+            onCompleteChange = { todoItem, complete ->
+                todoViewModel.updateTodo(TodoItem(id = todoItem.id, body = todoItem.body, complete = complete))
             },
-            onDeleteChange = { id, delete ->
-                todoViewModel.updateTodo(TodoItem(id = id, delete = delete))
+            onDeleteChange = { todoItem, delete ->
+                todoViewModel.updateTodo(TodoItem(id = todoItem.id, body = todoItem.body, complete = todoItem.complete, delete = delete))
             },
             onCheckCurrentTodoItem = { todoItem ->
                 // mutableStateOf<TodoItem?>(null)로 받으니 null check 문제 있어서 id와 body로 구현함..
@@ -131,8 +131,8 @@ fun TodoScreen(todoViewModel: TodoViewModel) {
 private fun Content(
     paddingValues: PaddingValues,
     todoItemList: List<TodoItem>,
-    onCompleteChange: (Long, Boolean) -> Unit,
-    onDeleteChange: (Long, Boolean) -> Unit,
+    onCompleteChange: (TodoItem, Boolean) -> Unit,
+    onDeleteChange: (TodoItem, Boolean) -> Unit,
     onCheckCurrentTodoItem: (TodoItem) -> Unit,
     isLongClicked: Boolean,
     onLongClick: () -> Unit
@@ -148,10 +148,10 @@ private fun Content(
             TodoItemCard(
                 todoItem = todoItem,
                 onCompleteChange = { complete ->
-                    onCompleteChange(todoItem.id, complete)
+                    onCompleteChange(todoItem, complete)
                 },
-                onDeleteChange = { id, delete ->
-                    onDeleteChange(id, delete)
+                onDeleteChange = { delete ->
+                    onDeleteChange(todoItem, delete)
                 },
                 onCheckCurrentTodoItem = { onCheckCurrentTodoItem(todoItem) },
                 isLongClicked = isLongClicked,
@@ -167,7 +167,7 @@ private fun TodoItemCard(
     todoItem: TodoItem,
     onCompleteChange: (Boolean) -> Unit,
     onCheckCurrentTodoItem: () -> Unit,
-    onDeleteChange: (Long, Boolean) -> Unit,
+    onDeleteChange: (Boolean) -> Unit,
     isLongClicked: Boolean,
     onLongClick: () -> Unit
 
@@ -200,7 +200,7 @@ private fun TodoItemCard(
             if (isLongClicked) IconButton(
                 onClick = {
                     isIconClicked = !isIconClicked
-                    onDeleteChange(todoItem.id, isIconClicked)
+                    onDeleteChange(isIconClicked)
                 },
                 modifier = Modifier.weight(0.2f)
             ) {
