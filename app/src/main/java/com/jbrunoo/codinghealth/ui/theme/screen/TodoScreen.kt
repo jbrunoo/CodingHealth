@@ -1,7 +1,6 @@
 package com.jbrunoo.codinghealth.ui.theme.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,16 +9,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,12 +51,12 @@ import com.jbrunoo.codinghealth.vm.TodoViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoScreen(todoViewModel: TodoViewModel) {
-    val todoItemList = todoViewModel.todoItemList.collectAsStateWithLifecycle()
+    val todoItems = todoViewModel.todoItems.collectAsStateWithLifecycle()
     var currentTodoItemId by remember { mutableLongStateOf(-1) }
     var currentTodoItemBody by remember { mutableStateOf("") }
 
     var openTodoDialog by remember { mutableStateOf(false) }
-    var openDeleteDialog by remember { mutableStateOf(false) }
+    var isLongClicked by remember { mutableStateOf(false) }
 
     fun clearTodoDialogState() {
         currentTodoItemId = -1
@@ -68,28 +69,46 @@ fun TodoScreen(todoViewModel: TodoViewModel) {
             CenterAlignedTopAppBar(title = { Text(text = "todo-list") })
         },
         floatingActionButton = {
-            Column {
+            if (!isLongClicked) {
                 FloatingActionButton(onClick = { openTodoDialog = true }) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = "add-icon")
                 }
+            } else {
+                Row {
+                    FloatingActionButton(onClick = {
+                        todoViewModel.deleteCheckedItems()
+                        isLongClicked = !isLongClicked
+                    }) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "delete-icon")
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    FloatingActionButton(onClick = {
+                        isLongClicked = !isLongClicked
+                    }) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "close-icon")
+                    }
+                }
             }
+
         }
     ) { paddingValues ->
         Content(
             paddingValues = paddingValues,
-            todoItemList = todoItemList.value,
-            onCheckedChange = { id, checked ->
-                todoViewModel.updateTodo(TodoItem(id = id, checked = checked))
+            todoItemList = todoItems.value,
+            onCompleteChange = { id, complete ->
+                todoViewModel.updateTodo(TodoItem(id = id, complete = complete))
             },
-            onDeleteTodoItem = { todoItem ->
-                todoViewModel.deleteTodo(todoItem)
+            onDeleteChange = { id, delete ->
+                todoViewModel.updateTodo(TodoItem(id = id, delete = delete))
             },
             onCheckCurrentTodoItem = { todoItem ->
                 // mutableStateOf<TodoItem?>(null)로 받으니 null check 문제 있어서 id와 body로 구현함..
                 currentTodoItemId = todoItem.id
                 currentTodoItemBody = todoItem.body
                 openTodoDialog = true
-            }
+            },
+            isLongClicked = isLongClicked,
+            onLongClick = { isLongClicked = !isLongClicked },
         )
         if (openTodoDialog) {
             TodoItemDialog(
@@ -112,9 +131,11 @@ fun TodoScreen(todoViewModel: TodoViewModel) {
 private fun Content(
     paddingValues: PaddingValues,
     todoItemList: List<TodoItem>,
-    onCheckedChange: (Long, Boolean) -> Unit,
-    onDeleteTodoItem: (TodoItem) -> Unit,
-    onCheckCurrentTodoItem: (TodoItem) -> Unit
+    onCompleteChange: (Long, Boolean) -> Unit,
+    onDeleteChange: (Long, Boolean) -> Unit,
+    onCheckCurrentTodoItem: (TodoItem) -> Unit,
+    isLongClicked: Boolean,
+    onLongClick: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.padding(paddingValues),
@@ -125,13 +146,16 @@ private fun Content(
             items = todoItemList
         ) { todoItem ->
             TodoItemCard(
-                body = todoItem.body,
-                checked = todoItem.checked,
-                onCheckedChange = { checked ->
-                    onCheckedChange(todoItem.id, checked)
+                todoItem = todoItem,
+                onCompleteChange = { complete ->
+                    onCompleteChange(todoItem.id, complete)
                 },
-                onDeleteTodoItem = { onDeleteTodoItem(todoItem) },
-                onCheckCurrentTodoItem = { onCheckCurrentTodoItem(todoItem) }
+                onDeleteChange = { id, delete ->
+                    onDeleteChange(id, delete)
+                },
+                onCheckCurrentTodoItem = { onCheckCurrentTodoItem(todoItem) },
+                isLongClicked = isLongClicked,
+                onLongClick = onLongClick
             )
         }
     }
@@ -140,34 +164,51 @@ private fun Content(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TodoItemCard(
-    body: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onDeleteTodoItem: () -> Unit,
-    onCheckCurrentTodoItem: () -> Unit
+    todoItem: TodoItem,
+    onCompleteChange: (Boolean) -> Unit,
+    onCheckCurrentTodoItem: () -> Unit,
+    onDeleteChange: (Long, Boolean) -> Unit,
+    isLongClicked: Boolean,
+    onLongClick: () -> Unit
+
 ) {
+    var isIconClicked by remember { mutableStateOf(false) }
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
-            .clickable { onCheckCurrentTodoItem() }
+            .combinedClickable(
+                onClick = onCheckCurrentTodoItem,
+                onLongClick = onLongClick
+            )
     )
     {
         Row(
             modifier = Modifier.fillMaxSize(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Checkbox(checked = checked, onCheckedChange = { onCheckedChange(!checked) })
+            Checkbox(
+                checked = todoItem.complete,
+                onCheckedChange = { onCompleteChange(!todoItem.complete) })
             Text(
-                text = body,
+                text = todoItem.body,
                 modifier = Modifier.weight(0.8f),
-                textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None,
+                textDecoration = if (todoItem.complete) TextDecoration.LineThrough else TextDecoration.None,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 2
             )
-            IconButton(onClick = onDeleteTodoItem, modifier = Modifier.weight(0.2f)) {
-                Icon(imageVector = Icons.Default.Delete, contentDescription = "delete")
-            }
+            if (isLongClicked) IconButton(
+                onClick = {
+                    isIconClicked = !isIconClicked
+                    onDeleteChange(todoItem.id, isIconClicked)
+                },
+                modifier = Modifier.weight(0.2f)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check, contentDescription = "check-icon",
+                    tint = if (isIconClicked) Color.Red else Color.Black
+                )
+            } else isIconClicked = false
         }
     }
 }
