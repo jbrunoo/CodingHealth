@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.google.devtools.ksp")
     id("androidx.room")
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -86,4 +87,7 @@ dependencies {
     implementation("androidx.room:room-ktx:$room_version")
     // collectAsStateWithLifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
+    // dagger-hilt
+    implementation("com.google.dagger:hilt-android:2.49")
+    ksp("com.google.dagger:hilt-android-compiler:2.49")
 }
