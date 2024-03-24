@@ -45,7 +45,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jbrunoo.codinghealth.local.TodoItem
+import com.jbrunoo.codinghealth.data.local.TodoItem
 import com.jbrunoo.codinghealth.vm.TodoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)

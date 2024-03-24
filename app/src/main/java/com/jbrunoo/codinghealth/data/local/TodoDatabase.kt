@@ -1,4 +1,4 @@
-package com.jbrunoo.codinghealth.local
+package com.jbrunoo.codinghealth.data.local
 
 import android.content.Context
 import androidx.room.AutoMigration

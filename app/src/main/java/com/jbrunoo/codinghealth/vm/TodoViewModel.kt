@@ -2,8 +2,8 @@ package com.jbrunoo.codinghealth.vm
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.jbrunoo.codinghealth.local.TodoDao
-import com.jbrunoo.codinghealth.local.TodoItem
+import com.jbrunoo.codinghealth.data.local.TodoDao
+import com.jbrunoo.codinghealth.data.local.TodoItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
