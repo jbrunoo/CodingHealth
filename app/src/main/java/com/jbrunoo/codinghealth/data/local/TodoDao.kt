@@ -1,4 +1,4 @@
-package com.jbrunoo.codinghealth.local
+package com.jbrunoo.codinghealth.data.local
 
 import androidx.room.Dao
 import androidx.room.Insert

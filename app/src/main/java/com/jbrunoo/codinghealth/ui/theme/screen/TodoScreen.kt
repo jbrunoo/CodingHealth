@@ -45,12 +45,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.jbrunoo.codinghealth.local.TodoItem
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jbrunoo.codinghealth.data.local.TodoItem
 import com.jbrunoo.codinghealth.vm.TodoViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoScreen(todoViewModel: TodoViewModel) {
+fun TodoScreen(todoViewModel: TodoViewModel = viewModel()) { // hiltViewModel은 내부적으로 navBackStackEntry 사용, 화면 전환 없어서 디펜던시 추가x
     val todoItems = todoViewModel.todoItems.collectAsStateWithLifecycle()
     var currentTodoItemId by remember { mutableLongStateOf(-1) }
     var currentTodoItemBody by remember { mutableStateOf("") }
@@ -170,7 +171,6 @@ private fun TodoItemCard(
     onDeleteChange: (Boolean) -> Unit,
     isLongClicked: Boolean,
     onLongClick: () -> Unit
-
 ) {
     var isIconClicked by remember { mutableStateOf(false) }
     Card(
